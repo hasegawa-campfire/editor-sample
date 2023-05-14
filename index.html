@@ -17,7 +17,7 @@
     <div class="add-menu" tabindex="-1">
       <button class="add-item" onclick="selectAddMenu(this, 'mainvisual')">メインビジュアル</button>
       <button class="add-item" onclick="selectAddMenu(this, 'customcontent')">カスタムコンテンツ</button>
-      <button class="add-item" onclick="selectAddMenu(this, 'projects')">プロジェクト一覧</button>
+      <button class="add-item" onclick="selectAddMenu(this, 'projects')">プロジェクトリスト</button>
       <button class="add-item" onclick="selectAddMenu(this, 'profile')">プロフィール</button>
     </div>
   </section>
@@ -180,7 +180,7 @@
       </div>
     `),
 
-    projects: (data) => html.section('プロジェクト一覧', `
+    projects: (data) => html.section('プロジェクトリスト', `
       <input type="hidden" name="type" value="projects">
       ${html.formGroup('タイトル', `
         <input type="text" class="block" name="title" value="${data.title || 'プロジェクト'}">
