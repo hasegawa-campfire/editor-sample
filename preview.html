@@ -7,6 +7,8 @@
 
 <body>
 <script>
+  navigator.serviceWorker.register('./sw.js', { scope: "./" })
+
   const json = localStorage.getItem('editor-sample')
   const [meta, ...dataList] = json ? JSON.parse(json) : [{}]
 

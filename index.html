@@ -29,6 +29,31 @@
   </section>
 </main>
 
+<script type="module">
+  const db = await new Promise((resolve, reject) => {
+    const req = indexedDB.open('editor-sample')
+    req.onupgradeneeded = () => req.result.createObjectStore('files', { autoIncrement: true })
+    req.onsuccess = () => resolve(req.result)
+    req.onerror = reject
+  })
+
+  window.putFile = (value) => new Promise((resolve, reject) => {
+    const req = db.transaction('files', 'readwrite').objectStore('files').put(value)
+    req.onsuccess = () => resolve(req.result)
+    req.onerror = reject
+  })
+
+  window.deleteFile = (key) => {
+    db.transaction('files', 'readwrite').objectStore('files').delete(key)
+  }
+
+  window.getFileKeys = (value) => new Promise((resolve, reject) => {
+    const req = db.transaction('files', 'readwrite').objectStore('files').getAllKeys()
+    req.onsuccess = () => resolve(req.result)
+    req.onerror = reject
+  })
+</script>
+
 <script>
   const html = {
     section: (name, content) => `
@@ -230,7 +255,8 @@
       multiple: false,
     })
     const file = await fileHandle.getFile()
-    return URL.createObjectURL(file)
+    const key = await putFile(file)
+    return `//db/editor-sample/files/${key}`
   }
 
   async function selectImage(el) {
@@ -326,9 +352,15 @@
     editSections.insertAdjacentHTML('beforeend', html[type]({}))
   }
 
-  function save() {
+  async function save() {
     const dataList = Array.from(document.forms).map((form) => Object.fromEntries(new FormData(form)))
-    localStorage.setItem('editor-sample', JSON.stringify(dataList))
+    const json = JSON.stringify(dataList)
+    localStorage.setItem('editor-sample', json)
+    for (const key of await getFileKeys()) {
+      if (!new RegExp(`//db/editor-sample/files/${key}\\b`).test(json)) {
+        deleteFile(key)
+      }
+    }
     saved.animate(
       [
         { transform: 'translate(0px, 16px)', opacity: 0, },
@@ -340,7 +372,8 @@
     )
   }
 
-  function init() {
+  async function init() {
+    await navigator.serviceWorker.register('./sw.js', { scope: "./" })
     const json = localStorage.getItem('editor-sample')
     const [meta, ...dataList] = json ? JSON.parse(json) : [{}]
     headSections.insertAdjacentHTML('beforeend', html.meta(meta))
