@@ -16,14 +16,14 @@
     <button class="add-button" onclick="openAddMenu(this)">＋</button>
     <div class="add-menu" tabindex="-1">
       <button class="add-item" onclick="selectAddMenu(this, 'mainvisual')">メインビジュアル</button>
-      <button class="add-item" onclick="selectAddMenu(this, 'content')">コンテンツ</button>
+      <button class="add-item" onclick="selectAddMenu(this, 'customcontent')">カスタムコンテンツ</button>
       <button class="add-item" onclick="selectAddMenu(this, 'projects')">プロジェクト一覧</button>
       <button class="add-item" onclick="selectAddMenu(this, 'profile')">プロフィール</button>
     </div>
   </section>
 
   <section class="footer">
-    <a type="button" class="page-button" href="preview.html" target="_blank" onclick="save()">プレビュー</a>
+    <a type="button" class="page-button" href="preview.html" target="preview" onclick="save()">プレビュー</a>
     <button type="button" class="page-button primary" onclick="save()">保存する</button>
     <span id="saved">保存しました！</span>
   </section>
@@ -126,12 +126,12 @@
         <textarea class="block" name="subText">${data.subText || ''}</textarea>
       `)}
       ${html.formGroup('テキストカラー', `
-        <input type="color" name="textColor" value="${data.textColor || '#ffffff'}">
+        <input type="color" name="textColor" value="${data.textColor || '#000000'}">
       `)}
     `),
 
-    content: (data) => html.section('コンテンツ', `
-      <input type="hidden" name="type" value="content">
+    customcontent: (data) => html.section('カスタムコンテンツ', `
+      <input type="hidden" name="type" value="customcontent">
       <div class="editor">
         <div class="editor-header">
           <button type="button" onclick="editHead(this)"><b>H6</b></button>
@@ -242,21 +242,24 @@
   }
 
   async function pickImageUrl() {
-    const [fileHandle] = await window.showOpenFilePicker({
-      types: [
-        {
-          description: "Images",
-          accept: {
-            "image/*": [".png", ".gif", ".jpeg", ".jpg"],
-          },
-        },
-      ],
-      excludeAcceptAllOption: true,
-      multiple: false,
+    return new Promise((resolve, reject) => {
+      const input = document.createElement('input')
+      input.type = 'file'
+      document.body.appendChild(input)
+      input.style.width = '0px'
+      input.style.position = 'fixed'
+      input.style.left = '-100px'
+      input.onchange = async () => {
+        input.remove()
+        if (input.files[0]) {
+          const key = await putFile(input.files[0])
+          resolve(`//db/editor-sample/files/${key}`)
+        } else {
+          reject(Error('cancel'))
+        }
+      }
+      input.click()
     })
-    const file = await fileHandle.getFile()
-    const key = await putFile(file)
-    return `//db/editor-sample/files/${key}`
   }
 
   async function selectImage(el) {
@@ -348,8 +351,8 @@
   }
 
   function selectAddMenu(el, type) {
-    el.blur()
     editSections.insertAdjacentHTML('beforeend', html[type]({}))
+    el.parentElement.previousElementSibling.focus()
   }
 
   async function save() {
@@ -394,6 +397,7 @@
   body {
     color: #4d4a4a;
     background-color: #f6f8fa;
+    font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
     font-size: 13px;
     line-height: 1.4;
   }
@@ -419,6 +423,7 @@
 
   button {
     cursor: pointer;
+    min-height: 24px;
   }
 
   button svg {
@@ -582,7 +587,8 @@
     width: 32px;
     font-size: 20px;
     font-weight: bold;
-    line-height: 32px;
+    line-height: 28px;
+    padding-bottom: 4px;
     text-align: center;
     background-color: #fffe;
     border-radius: 999px;

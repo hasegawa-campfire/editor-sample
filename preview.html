@@ -29,8 +29,8 @@
       </section>
     `,
 
-    content: (data) => `
-      <section class="content">${data.html}</section>
+    customcontent: (data) => `
+      <section class="customcontent">${data.html}</section>
     `,
 
     projects: (data) => `
@@ -76,6 +76,7 @@
   body {
     color: #4d4a4a;
     background-color: #fff;
+    font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
     font-size: 13px;
     line-height: 1.4;
     padding-bottom: 80px;
@@ -117,8 +118,9 @@
   section.mainvisual {
     margin-left: calc(50% - 50vw);
     margin-right: calc(50% - 50vw);
+    padding: 40px 0;
     max-width: none;
-    height: 480px;
+    min-height: 480px;
     display: flex;
     align-items: center;
     justify-content: center;
