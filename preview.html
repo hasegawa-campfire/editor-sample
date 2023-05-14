@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+
+<meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title></title>
+
+<body>
+<script>
+  const json = localStorage.getItem('editor-sample')
+  const [meta, ...dataList] = json ? JSON.parse(json) : [{}]
+
+  document.title = meta.title || 'プレビュー'
+
+  const html = {
+    mainvisual: (data) => `
+      <section class="mainvisual" style="
+        background-image: url('${data.bgImage}');
+        background-color: ${data.bgColor};
+        color: ${data.textColor};
+      ">
+        <div class="mainvisual-content">
+          ${data.titleImage ? `<img class="mainvisual-image" src="${data.titleImage}">` : ''}
+          ${data.mainText ? `<div class="mainvisual-title">${data.mainText}</div>` : ''}
+          ${data.subText ? `<div class="mainvisual-subtitle">${data.subText}</div>` : ''}
+        </div>
+      </section>
+    `,
+
+    content: (data) => `
+      <section class="content">${data.html}</section>
+    `,
+
+    projects: (data) => `
+      <section class="projects">
+        <div class="projects-title">${data.title}</div>
+        <div class="project-list" style="--columns: ${data.columns};">
+          ${data.ids.split(',').filter(Boolean).map((id) => `
+            <div class="project-item">
+              <div class="project-image"></div>
+              <div class="project-title">XXXXXXXXX</div>
+              <div class="project-overview"></div>
+            </div>
+          `).join('')}
+        </div>
+      </section>
+    `,
+
+    profile: (data) => `
+      <section class="profile" style="
+        background-color: ${data.bgColor};
+        color: ${data.textColor};
+      ">
+        ${data.image ? `<img class="profile-image" src="${data.image}">` : ''}
+        <div>
+          ${data.name ? `<div class="profile-name">${data.name}</div>` : ''}
+          ${data.description ? `<div class="profile-description">${data.description}</div>` : ''}
+        </div>
+      </section>
+    `,
+  }
+
+  for (const data of dataList) {
+    document.write(html[data.type](data))
+  }
+</script>
+
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    color: #4d4a4a;
+    background-color: #fff;
+    font-size: 13px;
+    line-height: 1.4;
+    padding-bottom: 80px;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  img {
+    max-width: 100%;
+  }
+
+  a {
+    color: #2e70ba;
+    text-decoration: inherit;
+  }
+
+  h6 {
+    font-size: 18px;
+    font-weight: bold;
+    margin: 0.5em 0;
+  }
+
+  section {
+    margin: 100px auto;
+    max-width: 1200px;
+    padding: 0 40px;
+  }
+
+  section:first-of-type {
+    margin-top: 0;
+  }
+
+  section:last-of-type {
+    margin-bottom: 0;
+  }
+
+  section.mainvisual {
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    max-width: none;
+    height: 480px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+
+  .mainvisual-content {
+    max-width: 1200px;
+  }
+
+  .mainvisual-image {
+    margin: 0 auto;
+    display: block;
+    max-width: 80%;
+  }
+
+  .mainvisual-title {
+    font-size: 50px;
+    line-height: 1.6;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  .mainvisual-subtitle {
+    margin-top: 35px;
+    font-size: 14px;
+    line-height: 1.6;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  .projects-title {
+    text-align: center;
+    font-size: 24px;
+    font-weight: bold;
+  }
+
+  .project-list {
+    margin-top: 20px;
+    display: grid;
+    grid-template-columns: repeat(var(--columns, 3), 1fr);
+    gap: 40px;
+  }
+
+  .project-item {
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    min-height: 420px;
+    border: #eee 1px solid;
+    box-shadow: 0 4px 0 #e4e4e4 ;
+    border-radius: 5px;
+    overflow: hidden;
+  }
+
+  .project-image {
+    aspect-ratio: 3 / 2;
+    background-color: #ccc;
+  }
+
+  .project-title {
+    padding: 10px;
+    font-size: 14px;
+    font-weight: bold;
+  }
+
+  .project-overview {
+    background-color: #f6f8fa;
+    height: 60px;
+  }
+
+  section.profile {
+    padding: 30px;
+    display: flex;
+    align-items: center;
+    gap: 30px;
+    color: #fff;
+    background-color: #000;
+  }
+
+  .profile-image {
+    width: 250px;
+    height: 250px;
+    object-fit: cover;
+  }
+
+  .profile-name {
+    font-size: 18px;
+    font-weight: bold;
+  }
+
+  .profile-description {
+    font-size: 13px;
+    line-height: 1.8;
+    font-weight: bold;
+    white-space: pre-line;
+  }
+
+  .profile-name + .profile-description {
+    margin-top: 30px;
+  }
+</style>
+</body>

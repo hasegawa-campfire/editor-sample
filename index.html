@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+
+<meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Editor Sample</title>
+
+<main>
+  <div id="headSections">
+  </div>
+
+  <div id="editSections">
+  </div>
+
+  <section>
+    <button class="add-button" onclick="openAddMenu(this)">＋</button>
+    <div class="add-menu" tabindex="-1">
+      <button class="add-item" onclick="selectAddMenu(this, 'mainvisual')">メインビジュアル</button>
+      <button class="add-item" onclick="selectAddMenu(this, 'content')">コンテンツ</button>
+      <button class="add-item" onclick="selectAddMenu(this, 'projects')">プロジェクト一覧</button>
+      <button class="add-item" onclick="selectAddMenu(this, 'profile')">プロフィール</button>
+    </div>
+  </section>
+
+  <section class="footer">
+    <a type="button" class="page-button" href="preview.html" target="_blank" onclick="save()">プレビュー</a>
+    <button type="button" class="page-button primary" onclick="save()">保存する</button>
+    <span id="saved">保存しました！</span>
+  </section>
+</main>
+
+<script>
+  const html = {
+    section: (name, content) => `
+      <section>
+        <div class="section-header">
+          <button type="button" class="section-up" onclick="upSection(this)">▲</button>
+          <button type="button" class="section-down" onclick="downSection(this)">▼</button>
+          <div class="section-name">${name}</div>
+          <button type="button" onclick="removeSection(this)">×</button>
+        </div>
+        <form class="section-content" onsubmit="return false;"">${content}</form>
+      </section>
+    `,
+
+    formGroup: (label, content) => `
+      <div class="form-group">
+        <div class="form-label">${label}</div>
+        <div class="form-content">${content}</div>
+      </div>
+    `,
+
+    project: (id) => `
+      <div class="project-item">
+        <div class="project-id">${id}</div>
+        <div class="project-name">XXXXXXXX</div>
+        <button type="button" onclick="removeProject(this)">削除</button>
+      </div>
+    `,
+
+    imageSelect: (name, value) => `
+      <div class="image-select ${value ? '' : 'empty'}">
+        <div class="image-placeholder">画像を選択する</div>
+        <img class="image-open" onclick="selectImage(this)" src="${value || ''}">
+        <div class="image-remove" onclick="removeImage(this)">×</div>
+        <input type="hidden" name="${name}" value="${value || ''}">
+      </div>
+    `,
+
+    meta: (data) => html.section('metaタグ', `
+      <input type="hidden" name="type" value="meta">
+      ${html.formGroup('タイトル', `
+        <input type="text" class="block" name="title" value="${data.title || ''}">
+      `)}
+      ${html.formGroup('ディスクリプション', `
+        <textarea class="block" name="description">${data.description || ''}</textarea>
+      `)}
+      ${html.formGroup('キーワード', `
+        <input type="text" class="block" name="keyword" value="${data.keyword || ''}">
+      `)}
+      ${html.formGroup('OGP画像', `
+        ${html.imageSelect('image', data.image)}
+      `)}
+    `),
+
+    mainvisual: (data) => html.section('メインビジュアル', `
+      <input type="hidden" name="type" value="mainvisual">
+      ${html.formGroup('タイトル画像', `
+        ${html.imageSelect('titleImage', data.titleImage)}
+      `)}
+      ${html.formGroup('背景画像', `
+        ${html.imageSelect('bgImage', data.bgImage)}
+      `)}
+      ${html.formGroup('背景カラー', `
+        <input type="color" name="bgColor" value="${data.bgColor || '#ffffff'}">
+      `)}
+      ${html.formGroup('タイトルテキスト（メイン）', `
+        <textarea class="block" name="mainText">${data.mainText || ''}</textarea>
+      `)}
+      ${html.formGroup('タイトルテキスト（サブ）', `
+        <textarea class="block" name="subText">${data.subText || ''}</textarea>
+      `)}
+      ${html.formGroup('テキストカラー', `
+        <input type="color" name="textColor" value="${data.textColor || '#ffffff'}">
+      `)}
+    `),
+
+    content: (data) => html.section('コンテンツ', `
+      <input type="hidden" name="type" value="content">
+      <div class="editor">
+        <div class="editor-header">
+          <button type="button" onclick="editHead(this)"><b>H6</b></button>
+          <span class="editor-separator"></span>
+          <button type="button" onclick="editStyle(this, 'bold')"><b>B</b></button>
+          <button type="button" onclick="editStyle(this, 'italic')">&nbsp;<i>i</i>&nbsp;</button>
+          <button type="button" onclick="editStyle(this, 'strikeThrough')"><s>S</s></button>
+          <button type="button" onclick="editStyle(this, 'underline')"><u>U</u></button>
+          <span class="editor-separator"></span>
+          <button type="button" onclick="editStyle(this, 'justifyLeft')">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M3,18h6v-2H3V18z M3,11v2h12v-2H3z M3,6v2h18V6H3z"></path>
+            </svg>
+          </button>
+          <button type="button" onclick="editStyle(this, 'justifyCenter')">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M9,18h6v-2H9V18z M6,11v2h12v-2H6z M3,6v2h18V6H3z"></path>
+            </svg>
+          </button>
+          <button type="button" onclick="editStyle(this, 'justifyRight')">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M15,18h6v-2h-6V18z M9,11v2h12v-2H9z M3,6v2h18V6H3z"></path>
+            </svg>
+          </button>
+          <button type="button" onclick="editStyle(this, 'justifyFull')">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M3,18h18v-2H3V18z M3,11v2h18v-2H3z M3,6v2h18V6H3z"></path>
+            </svg>
+          </button>
+          <span class="editor-separator"></span>
+          <button type="button" onclick="editLink(this)">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M11,17H7A5,5,0,0,1,7,7h4V9H7a3,3,0,0,0,0,6h4ZM17,7H13V9h4a3,3,0,0,1,0,6H13v2h4A5,5,0,0,0,17,7Zm-1,4H8v2h8Z"></path>
+            </svg>
+          </button>
+          <button type="button" onclick="editImage(this)">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M14.2,11l3.8,5H6l3-3.9l2.1,2.7L14,11H14.2z M8.5,11c0.8,0,1.5-0.7,1.5-1.5S9.3,8,8.5,8S7,8.7,7,9.5C7,10.3,7.7,11,8.5,11z   M22,6v12c0,1.1-0.9,2-2,2H4c-1.1,0-2-0.9-2-2V6c0-1.1,0.9-2,2-2h16C21.1,4,22,4.9,22,6z M20,8.8V6H4v12h16V8.8z"></path>
+            </svg>
+          </button>
+          <span class="editor-separator"></span>
+          <button type="button" class="edit-button-html" onclick="toggleEditHtml(this)">&lt; &gt;</button>
+        </div>
+        <div class="editor-content" contenteditable spellcheck="false" oninput="editContent(this)">${data.html || ''}</div>
+        <textarea class="editor-html block" name="html" oninput="editHtml(this)">${data.html || ''}</textarea>
+      </div>
+    `),
+
+    projects: (data) => html.section('プロジェクト一覧', `
+      <input type="hidden" name="type" value="projects">
+      ${html.formGroup('タイトル', `
+        <input type="text" class="block" name="title" value="${data.title || 'プロジェクト'}">
+      `)}
+      ${html.formGroup('カラム数', `
+        <select name="columns">
+          <option value="3" ${!data.columns || data.columns === '3' ? 'selected' : ''}>3カラム</option>
+          <option value="4" ${data.columns === '4' ? 'selected' : ''}>4カラム</option>
+        </select>
+      `)}
+      ${html.formGroup('プロジェクト', `
+        <div class="projects-header">
+          <input type="text" placeholder="プロジェクトID">
+          <button type="button" onclick="addProject(this)">追加</button>
+        </div>
+        <div class="project-list">
+          <div class="project-item header">
+            <div class="project-id">ID</div>
+            <div class="project-name">プロジェクト名</div>
+          </div>
+          ${(data.ids || '').split(',').filter(Boolean).map((id) => html.project(id)).join('')}
+        </div>
+        <input type="hidden" name="ids" value="${data.ids || ''}">
+      `)}
+    `),
+
+    profile: (data) => html.section('プロフィール', `
+      <input type="hidden" name="type" value="profile">
+      ${html.formGroup('プロフィール画像', `
+        ${html.imageSelect('image', data.image)}
+      `)}
+      ${html.formGroup('プロフィール名', `
+        <input type="text" class="block" name="name" value="${data.name || ''}">
+      `)}
+      ${html.formGroup('紹介テキスト', `
+        <textarea class="block" name="description">${data.description || ''}</textarea>
+      `)}
+      ${html.formGroup('背景カラー', `
+        <input type="color" name="bgColor" value="${data.bgColor || '#000000'}">
+      `)}
+      ${html.formGroup('テキストカラー', `
+        <input type="color" name="textColor" value="${data.textColor || '#ffffff'}">
+      `)}
+    `),
+  }
+
+  function upSection(el) {
+    const section = el.closest('section')
+    section.previousElementSibling?.before(section)
+  }
+
+  function downSection(el) {
+    const section = el.closest('section')
+    section.nextElementSibling?.after(section)
+  }
+
+  function removeSection(el) {
+    el.closest('section').remove()
+  }
+
+  async function pickImageUrl() {
+    const [fileHandle] = await window.showOpenFilePicker({
+      types: [
+        {
+          description: "Images",
+          accept: {
+            "image/*": [".png", ".gif", ".jpeg", ".jpg"],
+          },
+        },
+      ],
+      excludeAcceptAllOption: true,
+      multiple: false,
+    })
+    const file = await fileHandle.getFile()
+    return URL.createObjectURL(file)
+  }
+
+  async function selectImage(el) {
+    const url = await pickImageUrl()
+    el.parentElement.classList.remove('empty')
+    el.src = url
+    el.nextElementSibling.nextElementSibling.value = url
+  }
+
+  function removeImage(el) {
+    el.parentElement.classList.add('empty')
+    el.previousElementSibling.src = ''
+    el.nextElementSibling.value = ''
+  }
+
+  function isEditContains(el) {
+    const editor = el.form.querySelector('.editor-content')
+    const selection = window.getSelection()
+    const selNode = selection.anchorNode
+    return selNode && editor.contains(selNode)
+  }
+
+  function editHead(el) {
+    if (!isEditContains(el)) return
+    let isHead = false
+    let node = window.getSelection().anchorNode
+    while (node) {
+      isHead |= node instanceof HTMLHeadingElement
+      node = node.parentElement
+    }
+    document.execCommand('formatBlock', false, isHead ? 'div' : '<h6>')
+  }
+
+  function editStyle(el, command) {
+    if (!isEditContains(el)) return
+    document.execCommand(command, false, null)
+  }
+
+  function editLink(el) {
+    if (!isEditContains(el)) return
+    const url = prompt('URLを入力してください')
+    if (url) {
+      document.execCommand('createLink', false, url)
+    }
+  }
+
+  async function editImage(el) {
+    if (!isEditContains(el)) return
+    const url = await pickImageUrl()
+    document.execCommand('insertImage', false, url)
+  }
+
+  function toggleEditHtml(el) {
+    el.parentElement.classList.toggle('html')
+  }
+
+  function editContent(el) {
+    el.nextElementSibling.value = el.innerHTML
+  }
+
+  function editHtml(el) {
+    el.previousElementSibling.innerHTML = el.value
+  }
+
+  function addProject(el) {
+    const input = el.previousElementSibling
+    const ids = el.form.ids.value.split(',').filter(Boolean)
+    const list = el.form.querySelector('.project-list')
+    for (const id of input.value.split(/[\s,]/).filter((id) => id && !ids.includes(id))) {
+      list.insertAdjacentHTML('beforeend', html.project(id))
+      ids.push(id)
+    }
+    el.form.ids.value = ids.join(',')
+    input.value = ''
+  }
+
+  function removeProject(el) {
+    const form = el.closest('form')
+    const item = el.closest('.project-item')
+    const id = item.querySelector('.project-id').textContent
+    const ids = form.ids.value.split(',').filter(Boolean)
+    ids.splice(ids.indexOf(id), 1)
+    el.form.ids.value = ids.join(',')
+    item.remove()
+  }
+
+  function openAddMenu(el) {
+    el.nextElementSibling.focus()
+  }
+
+  function selectAddMenu(el, type) {
+    el.blur()
+    editSections.insertAdjacentHTML('beforeend', html[type]({}))
+  }
+
+  function save() {
+    const dataList = Array.from(document.forms).map((form) => Object.fromEntries(new FormData(form)))
+    localStorage.setItem('editor-sample', JSON.stringify(dataList))
+    saved.animate(
+      [
+        { transform: 'translate(0px, 16px)', opacity: 0, },
+        { transform: 'translate(0px, 0px)', opacity: 1, offset: 0.05 },
+        { transform: 'translate(0px, 0px)', opacity: 1, offset: 0.95},
+        { transform: 'translate(0px, 0px)', opacity: 0, },
+      ],
+      2000
+    )
+  }
+
+  function init() {
+    const json = localStorage.getItem('editor-sample')
+    const [meta, ...dataList] = json ? JSON.parse(json) : [{}]
+    headSections.insertAdjacentHTML('beforeend', html.meta(meta))
+    for (const data of dataList) {
+      editSections.insertAdjacentHTML('beforeend', html[data.type](data))
+    }
+  }
+
+  init()
+</script>
+
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    color: #4d4a4a;
+    background-color: #f6f8fa;
+    font-size: 13px;
+    line-height: 1.4;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  img {
+    max-width: 100%;
+  }
+
+  a {
+    color: #2e70ba;
+    text-decoration: inherit;
+  }
+
+  h6 {
+    font-size: 18px;
+    font-weight: bold;
+    margin: 0.5em 0;
+  }
+
+  button {
+    cursor: pointer;
+  }
+
+  button svg {
+    height: 1.2em;
+    fill: currentColor;
+    vertical-align: middle;
+  }
+
+  input[type="text"],
+  textarea,
+  select,
+  .editor-content {
+    border: #888 1px solid;
+    border-radius: 3px;
+    padding: 8px 12px;
+    outline: none;
+  }
+
+  input[type="text"].block,
+  textarea.block {
+    display: block;
+    width: 100%;
+  }
+
+  input[type="text"] {
+    appearance: none;
+    font: inherit;
+    font-size: 100%;
+    color: inherit;
+  }
+
+  textarea {
+    appearance: none;
+    resize: vertical;
+    font: inherit;
+    font-size: 100%;
+    color: inherit;
+    min-height: 100px;
+  }
+
+  select {
+    appearance: menulist;
+    font: inherit;
+    font-size: 100%;
+    color: inherit;
+  }
+
+  main {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 0 40px;
+  }
+
+  @media screen and (max-width:768px) {
+    main {
+      padding: 0 16px;
+    }
+  }
+
+  section {
+    margin-top: 16px;
+    padding: 16px;
+    box-shadow: 0 1px 2px #0001;
+    background-color: #fff;
+    border: #f4f4f4 1px solid;
+    border-radius: 4px;
+  }
+
+  .section-header {
+    margin: 0 -16px;
+    padding: 0 16px 16px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    border-bottom: #ddd 1px solid;
+  }
+
+  .section-name {
+    margin-left: 8px;
+    flex: auto;
+  }
+
+  .section-content {
+    padding: 24px 0 8px;
+  }
+
+  #headSections button {
+    display: none;
+  }
+
+  #headSections .section-name  {
+    margin-left: 0;
+  }
+
+  #editSections section:first-child .section-up,
+  #editSections section:last-child .section-down {
+    pointer-events: none;
+    opacity: 0.33;
+  }
+
+  .form-group {
+    display: flex;
+  }
+
+  @media screen and (max-width:768px) {
+    .form-group  {
+      display: block;
+    }
+  }
+
+  .form-group:not(:first-of-type) {
+    margin-top: 16px;
+  }
+
+  .form-label {
+    flex: none;
+    width: 200px;
+    color: #666;
+  }
+
+  @media screen and (max-width:768px) {
+    .form-label {
+      width: auto;
+      margin-bottom: 4px;
+    }
+  }
+
+  .form-content {
+    flex: auto;
+  }
+
+  .image-select {
+    position: relative;
+    width: max-content;
+    border: #888 1px solid;
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .image-placeholder {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    color: #888;
+    white-space: nowrap
+  }
+
+  .image-open {
+    display: block;
+    width: 160px;
+    height: 90px;
+    object-fit: cover;
+    cursor: pointer;
+  }
+
+  .image-remove {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 32px;
+    font-size: 20px;
+    font-weight: bold;
+    line-height: 32px;
+    text-align: center;
+    background-color: #fffe;
+    border-radius: 999px;
+    cursor: pointer;
+  }
+
+  .image-select:not(.empty) .image-placeholder {
+    display: none;
+  }
+
+  .image-select.empty .image-open {
+    opacity: 0;
+  }
+
+  .image-select.empty .image-remove {
+    display: none;
+  }
+
+  .editor-header {
+    display: flex;
+    gap: 8px 4px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+  }
+
+  .editor-separator {
+    display: inline-block;
+    border-left: #ddd 1px solid;
+    margin: 0 8px;
+  }
+
+  .editor-content {
+    line-height: 1.75;
+    overflow: auto;
+    min-height: 200px;
+    resize: vertical;
+  }
+
+  .editor-html {
+    min-height: 200px;
+    resize: vertical;
+  }
+
+  .editor-header:not(.html) ~ .editor-html,
+  .editor-header.html ~ .editor-content {
+    display: none;
+  }
+
+  .editor-header.html button.edit-button-html {
+    color: #0098f7;
+    font-weight: bold;
+  }
+
+  .editor-header.html button:not(.edit-button-html) {
+    opacity: 0.33;
+    pointer-events: none;
+  }
+
+  .projects-header {
+    display: flex;
+    gap: 4px;
+  }
+
+  .project-list {
+    display: block;
+    margin-top: 8px;
+    border: #ccc 1px solid;
+    border-top: none;
+  }
+
+  .project-list:not(:has(.project-item:not(.header))) {
+    display: none;
+  }
+
+  .project-item {
+    border-top: #ccc 1px solid;
+    display: flex;
+    align-items: center;
+    padding: 8px;
+  }
+
+  .project-item.header {
+    background-color: #f4f4f4;
+    font-weight: bold;
+    align-items: center;
+  }
+
+  .project-id {
+    width: 100px;
+  }
+
+  .project-name {
+    flex: auto;
+  }
+
+  .add-menu {
+    margin-top: 4px;
+    position: absolute;
+    display: grid;
+    padding: 8px;
+    gap: 4px;
+    border: #ccc 1px solid;
+    border-radius: 4px;
+    background-color: #fff;
+    box-shadow: 0px 2px 4px #0002;
+    z-index: 1;
+  }
+
+  .add-menu:not(:focus-within) {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .footer {
+    position: sticky;
+    bottom: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .page-button {
+    appearance: none;
+    display: inline-block;
+    padding: 10px 30px;
+    background-color: #fff;
+    border-radius: 3px;
+    border: #888 1px solid;
+    font: inherit;
+    font-size: inherit;
+    color: inherit;
+  }
+
+  .page-button:active {
+    opacity: 0.67;
+  }
+
+  .page-button.primary {
+    background-color: #2e86de;
+    color: #fff;
+    border: none;
+    box-shadow: 0 1px 1px rgba(0,0,0,0.075);
+  }
+
+  #saved {
+    position: relative;
+    display: inline-block;
+    opacity: 0;
+  }
+</style>
