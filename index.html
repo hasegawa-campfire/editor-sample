@@ -30,31 +30,6 @@
 </main>
 
 <script type="module">
-  const db = await new Promise((resolve, reject) => {
-    const req = indexedDB.open('editor-sample')
-    req.onupgradeneeded = () => req.result.createObjectStore('files', { autoIncrement: true })
-    req.onsuccess = () => resolve(req.result)
-    req.onerror = reject
-  })
-
-  window.putFile = (value) => new Promise((resolve, reject) => {
-    const req = db.transaction('files', 'readwrite').objectStore('files').put(value)
-    req.onsuccess = () => resolve(req.result)
-    req.onerror = reject
-  })
-
-  window.deleteFile = (key) => {
-    db.transaction('files', 'readwrite').objectStore('files').delete(key)
-  }
-
-  window.getFileKeys = (value) => new Promise((resolve, reject) => {
-    const req = db.transaction('files', 'readwrite').objectStore('files').getAllKeys()
-    req.onsuccess = () => resolve(req.result)
-    req.onerror = reject
-  })
-</script>
-
-<script>
   const html = {
     section: (name, content) => `
       <section>
@@ -83,14 +58,23 @@
       </div>
     `,
 
-    imageSelect: (name, value) => `
-      <div class="image-select ${value ? '' : 'empty'}">
-        <div class="image-placeholder">画像を選択する</div>
-        <img class="image-open" onclick="selectImage(this)" src="${value || ''}">
-        <div class="image-remove" onclick="removeImage(this)">×</div>
-        <input type="hidden" name="${name}" value="${value || ''}">
-      </div>
-    `,
+    imageSelect: (name, value) => {
+      const empty = !value || value.size <= 0
+      const id = `__imageSelect${idCount++}`
+      if (!empty) {
+        setTimeout(() => {
+          if (window[id]) window[id].files = toFileList(value)
+        }, 1)
+      }
+      return `
+        <div class="image-select ${empty ? 'empty' : ''}">
+          <div class="image-placeholder">画像を選択する</div>
+          <img class="image-open" onclick="selectImage(this)" src="${empty ? '' : URL.createObjectURL(value)}">
+          <div class="image-remove" onclick="removeImage(this)">×</div>
+          <input type="file" hidden name="${name}" id="${id}">
+        </div>
+      `
+    },
 
     meta: (data) => html.section('metaタグ', `
       <input type="hidden" name="type" value="meta">
@@ -227,21 +211,51 @@
     `),
   }
 
-  function upSection(el) {
+  const db = await new Promise((resolve, reject) => {
+    const req = indexedDB.open('editor-sample', 2)
+    req.onupgradeneeded = () => {
+      req.result.deleteObjectStore('files')
+      req.result.createObjectStore('data', { keyPath: 'key' })
+    }
+    req.onsuccess = () => resolve(req.result)
+    req.onerror = reject
+  })
+
+  const putStoreValue = (key, value) => new Promise((resolve, reject) => {
+    const req = db.transaction('data', 'readwrite').objectStore('data').put({ key, value })
+    req.onsuccess = () => resolve(req.result)
+    req.onerror = reject
+  })
+
+  const getStoreValue = (key) => new Promise((resolve, reject) => {
+    const req = db.transaction('data', 'readwrite').objectStore('data').get(key)
+    req.onsuccess = () => resolve(req.result?.value)
+    req.onerror = reject
+  })
+
+  let idCount = 0
+
+  function toFileList(...files) {
+    const dt = new DataTransfer()
+    for (const file of files) dt.items.add(file)
+    return dt.files
+  }
+
+  window.upSection = (el) => {
     const section = el.closest('section')
     section.previousElementSibling?.before(section)
   }
 
-  function downSection(el) {
+  window.downSection = (el) => {
     const section = el.closest('section')
     section.nextElementSibling?.after(section)
   }
 
-  function removeSection(el) {
+  window.removeSection = (el) => {
     el.closest('section').remove()
   }
 
-  async function pickImageUrl() {
+  async function pickImage() {
     return new Promise((resolve, reject) => {
       const input = document.createElement('input')
       input.type = 'file'
@@ -252,8 +266,7 @@
       input.onchange = async () => {
         input.remove()
         if (input.files[0]) {
-          const key = await putFile(input.files[0])
-          resolve(`//db/editor-sample/files/${key}`)
+          resolve(input.files[0])
         } else {
           reject(Error('cancel'))
         }
@@ -262,17 +275,17 @@
     })
   }
 
-  async function selectImage(el) {
-    const url = await pickImageUrl()
+  window.selectImage = async (el) => {
+    const file = await pickImage()
     el.parentElement.classList.remove('empty')
-    el.src = url
-    el.nextElementSibling.nextElementSibling.value = url
+    el.src = URL.createObjectURL(file)
+    el.nextElementSibling.nextElementSibling.files = toFileList(file)
   }
 
-  function removeImage(el) {
+  window.removeImage = (el) => {
     el.parentElement.classList.add('empty')
     el.previousElementSibling.src = ''
-    el.nextElementSibling.value = ''
+    el.nextElementSibling.files = toFileList()
   }
 
   function isEditContains(el) {
@@ -282,7 +295,7 @@
     return selNode && editor.contains(selNode)
   }
 
-  function editHead(el) {
+  window.editHead = (el) => {
     if (!isEditContains(el)) return
     let isHead = false
     let node = window.getSelection().anchorNode
@@ -293,12 +306,12 @@
     document.execCommand('formatBlock', false, isHead ? 'div' : '<h6>')
   }
 
-  function editStyle(el, command) {
+  window.editStyle = (el, command) => {
     if (!isEditContains(el)) return
     document.execCommand(command, false, null)
   }
 
-  function editLink(el) {
+  window.editLink = (el) => {
     if (!isEditContains(el)) return
     const url = prompt('URLを入力してください')
     if (url) {
@@ -306,25 +319,25 @@
     }
   }
 
-  async function editImage(el) {
+  window.editImage = async (el) => {
     if (!isEditContains(el)) return
-    const url = await pickImageUrl()
-    document.execCommand('insertImage', false, url)
+    const file = await pickImage()
+    document.execCommand('insertImage', false, URL.createObjectURL(file))
   }
 
-  function toggleEditHtml(el) {
+  window.toggleEditHtml = (el) => {
     el.parentElement.classList.toggle('html')
   }
 
-  function editContent(el) {
+  window.editContent = (el) => {
     el.nextElementSibling.value = el.innerHTML
   }
 
-  function editHtml(el) {
+  window.editHtml = (el) => {
     el.previousElementSibling.innerHTML = el.value
   }
 
-  function addProject(el) {
+  window.addProject = (el) => {
     const input = el.previousElementSibling
     const ids = el.form.ids.value.split(',').filter(Boolean)
     const list = el.form.querySelector('.project-list')
@@ -336,7 +349,7 @@
     input.value = ''
   }
 
-  function removeProject(el) {
+  window.removeProject = (el) => {
     const form = el.closest('form')
     const item = el.closest('.project-item')
     const id = item.querySelector('.project-id').textContent
@@ -346,24 +359,18 @@
     item.remove()
   }
 
-  function openAddMenu(el) {
+  window.openAddMenu = (el) => {
     el.nextElementSibling.focus()
   }
 
-  function selectAddMenu(el, type) {
+  window.selectAddMenu = (el, type) => {
     editSections.insertAdjacentHTML('beforeend', html[type]({}))
     el.parentElement.previousElementSibling.focus()
   }
 
-  async function save() {
-    const dataList = Array.from(document.forms).map((form) => Object.fromEntries(new FormData(form)))
-    const json = JSON.stringify(dataList)
-    localStorage.setItem('editor-sample', json)
-    for (const key of await getFileKeys()) {
-      if (!new RegExp(`//db/editor-sample/files/${key}\\b`).test(json)) {
-        deleteFile(key)
-      }
-    }
+  window.save = async () => {
+    const sections = Array.from(document.forms).map((form) => Object.fromEntries(new FormData(form)))
+    await putStoreValue('sections', sections)
     saved.animate(
       [
         { transform: 'translate(0px, 16px)', opacity: 0, },
@@ -376,12 +383,10 @@
   }
 
   async function init() {
-    await navigator.serviceWorker.register('./sw.js', { scope: "./" })
-    const json = localStorage.getItem('editor-sample')
-    const [meta, ...dataList] = json ? JSON.parse(json) : [{}]
+    const [meta, ...sections] = (await getStoreValue('sections')) || [{}]
     headSections.insertAdjacentHTML('beforeend', html.meta(meta))
-    for (const data of dataList) {
-      editSections.insertAdjacentHTML('beforeend', html[data.type](data))
+    for (const section of sections) {
+      editSections.insertAdjacentHTML('beforeend', html[section.type](section))
     }
   }
 

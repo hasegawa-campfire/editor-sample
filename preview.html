@@ -6,23 +6,37 @@
 <title></title>
 
 <body>
-<script>
-  navigator.serviceWorker.register('./sw.js', { scope: "./" })
 
-  const json = localStorage.getItem('editor-sample')
-  const [meta, ...dataList] = json ? JSON.parse(json) : [{}]
+<script type="module">
+  const db = await new Promise((resolve, reject) => {
+    const req = indexedDB.open('editor-sample', 2)
+    req.onupgradeneeded = () => {
+      req.result.deleteObjectStore('files')
+      req.result.createObjectStore('data', { keyPath: 'key' })
+    }
+    req.onsuccess = () => resolve(req.result)
+    req.onerror = reject
+  })
+
+  const getStoreValue = (key) => new Promise((resolve, reject) => {
+    const req = db.transaction('data', 'readwrite').objectStore('data').get(key)
+    req.onsuccess = () => resolve(req.result?.value)
+    req.onerror = reject
+  })
+
+  const [meta, ...sections] = (await getStoreValue('sections')) || [{}]
 
   document.title = meta.title || 'プレビュー'
 
   const html = {
     mainvisual: (data) => `
       <section class="mainvisual" style="
-        background-image: url('${data.bgImage}');
+        ${data.bgImage?.size > 0 ? `background-image: url('${URL.createObjectURL(data.bgImage)}');` : ''}
         background-color: ${data.bgColor};
         color: ${data.textColor};
       ">
         <div class="mainvisual-content">
-          ${data.titleImage ? `<img class="mainvisual-image" src="${data.titleImage}">` : ''}
+          ${data.titleImage?.size > 0 ? `<img class="mainvisual-image" src="${URL.createObjectURL(data.titleImage)}">` : ''}
           ${data.mainText ? `<div class="mainvisual-title">${data.mainText}</div>` : ''}
           ${data.subText ? `<div class="mainvisual-subtitle">${data.subText}</div>` : ''}
         </div>
@@ -53,7 +67,7 @@
         background-color: ${data.bgColor};
         color: ${data.textColor};
       ">
-        ${data.image ? `<img class="profile-image" src="${data.image}">` : ''}
+        ${data.image?.size > 0 ? `<img class="profile-image" src="${URL.createObjectURL(data.image)}">` : ''}
         <div>
           ${data.name ? `<div class="profile-name">${data.name}</div>` : ''}
           ${data.description ? `<div class="profile-description">${data.description}</div>` : ''}
@@ -62,8 +76,8 @@
     `,
   }
 
-  for (const data of dataList) {
-    document.write(html[data.type](data))
+  for (const section of sections) {
+    document.body.insertAdjacentHTML('beforeend', html[section.type](section))
   }
 </script>
 
