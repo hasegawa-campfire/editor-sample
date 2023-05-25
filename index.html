@@ -214,7 +214,11 @@
   const db = await new Promise((resolve, reject) => {
     const req = indexedDB.open('editor-sample', 2)
     req.onupgradeneeded = () => {
-      req.result.deleteObjectStore('files')
+      try {
+        req.result.deleteObjectStore('files')
+      } catch {
+        // none
+      }
       req.result.createObjectStore('data', { keyPath: 'key' })
     }
     req.onsuccess = () => resolve(req.result)
