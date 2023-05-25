@@ -14,7 +14,7 @@
 
   <section>
     <button class="add-button" onclick="openAddMenu(this)">＋</button>
-    <div class="add-menu" tabindex="-1">
+    <div class="add-menu" hidden tabindex="-1">
       <button class="add-item" onclick="selectAddMenu(this, 'mainvisual')">メインビジュアル</button>
       <button class="add-item" onclick="selectAddMenu(this, 'customcontent')">カスタムコンテンツ</button>
       <button class="add-item" onclick="selectAddMenu(this, 'projects')">プロジェクトリスト</button>
@@ -360,13 +360,28 @@
   }
 
   window.openAddMenu = (el) => {
-    el.nextElementSibling.focus()
+    const menu = el.nextElementSibling
+    menu.hidden = false
+    menu.focus()
+
+    const onPointerdown = (e) => {
+      if (!menu.contains(e.target)) {
+        menu.hidden = true
+        window.removeEventListener('pointerdown', onPointerdown)
+      }
+    }
+    window.addEventListener('pointerdown', onPointerdown)
   }
 
   window.selectAddMenu = (el, type) => {
     editSections.insertAdjacentHTML('beforeend', html[type]({}))
+    el.parentElement.hidden = true
     el.parentElement.previousElementSibling.focus()
   }
+
+  window.addEventListener('pointerdown', (e) => {
+    if (!addMenu.contains(e.target)) addMenu.hidden = true
+  })
 
   window.save = async () => {
     const sections = Array.from(document.forms).map((form) => Object.fromEntries(new FormData(form)))
@@ -409,6 +424,10 @@
 
   * {
     box-sizing: border-box;
+  }
+
+  [hidden] {
+    display: none !important;
   }
 
   img {
@@ -700,11 +719,6 @@
     background-color: #fff;
     box-shadow: 0px 2px 4px #0002;
     z-index: 1;
-  }
-
-  .add-menu:not(:focus-within) {
-    opacity: 0;
-    pointer-events: none;
   }
 
   .footer {
